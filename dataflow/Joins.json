@@ -1,0 +1,78 @@
+{
+	"name": "Joins",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "OrdersStagging",
+						"type": "DatasetReference"
+					},
+					"name": "Orders",
+					"script": "source(output(\n\t\tOrderID as string,\n\t\tCustomerID as string,\n\t\tEmployeeID as string,\n\t\tOrderDate as string,\n\t\tShipperID as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> Orders"
+				},
+				{
+					"dataset": {
+						"referenceName": "CustomersStagging",
+						"type": "DatasetReference"
+					},
+					"name": "Customers",
+					"script": "source(output(\n\t\tCustomerID as string,\n\t\tCustomerName as string,\n\t\tContactName as string,\n\t\tAddress as string,\n\t\tCity as string,\n\t\tPostalCode as string,\n\t\tCountry as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> Customers"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "Fulloutersink",
+						"type": "DatasetReference"
+					},
+					"name": "FullOuterSink",
+					"script": "FulLOuter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tOrderID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID,\n\t\tCustomerID = Customers@CustomerID,\n\t\tCustomerName,\n\t\tContactName,\n\t\tAddress,\n\t\tCity,\n\t\tPostalCode,\n\t\tCountry\n\t)) ~> FullOuterSink"
+				},
+				{
+					"dataset": {
+						"referenceName": "Innersink",
+						"type": "DatasetReference"
+					},
+					"name": "InnerSink",
+					"script": "Inner sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tOrderID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID,\n\t\tCustomerID = Customers@CustomerID,\n\t\tCustomerName,\n\t\tContactName,\n\t\tAddress,\n\t\tCity,\n\t\tPostalCode,\n\t\tCountry\n\t)) ~> InnerSink"
+				},
+				{
+					"dataset": {
+						"referenceName": "LeftOuterSink",
+						"type": "DatasetReference"
+					},
+					"name": "LeftOuterSink",
+					"script": "LeftOuter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tCustomerID = Customers@CustomerID,\n\t\tCustomerName,\n\t\tContactName,\n\t\tAddress,\n\t\tCity,\n\t\tPostalCode,\n\t\tCountry,\n\t\tOrderID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID\n\t)) ~> LeftOuterSink"
+				},
+				{
+					"dataset": {
+						"referenceName": "RightOuterSink",
+						"type": "DatasetReference"
+					},
+					"name": "RightOuterSink",
+					"script": "RightOuter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tCustomerName,\n\t\tContactName,\n\t\tAddress,\n\t\tCity,\n\t\tPostalCode,\n\t\tCountry,\n\t\tOrderID,\n\t\tCustomerID = Orders@CustomerID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID\n\t)) ~> RightOuterSink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "FulLOuter",
+					"script": "Orders, Customers join(Orders@CustomerID == Customers@CustomerID,\n\tjoinType:'outer',\n\tbroadcast: 'none')~> FulLOuter"
+				},
+				{
+					"name": "Inner",
+					"script": "Orders, Customers join(Orders@CustomerID == Customers@CustomerID,\n\tjoinType:'inner',\n\tbroadcast: 'none')~> Inner"
+				},
+				{
+					"name": "LeftOuter",
+					"script": "Customers, Orders join(Customers@CustomerID == Orders@CustomerID,\n\tjoinType:'left',\n\tbroadcast: 'none')~> LeftOuter"
+				},
+				{
+					"name": "RightOuter",
+					"script": "Customers, Orders join(Customers@CustomerID == Orders@CustomerID,\n\tjoinType:'right',\n\tbroadcast: 'none')~> RightOuter"
+				}
+			]
+		}
+	}
+}

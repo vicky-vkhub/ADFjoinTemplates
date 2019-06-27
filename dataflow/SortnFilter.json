@@ -1,0 +1,62 @@
+{
+	"name": "SortnFilter",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "CustomersSort",
+						"type": "DatasetReference"
+					},
+					"name": "Customers",
+					"script": "source(output(\n\t\tCustomerID as string,\n\t\tCustomerName as string,\n\t\tContactName as string,\n\t\tAddress as string,\n\t\tCity as string,\n\t\tPostalCode as string,\n\t\tCountry as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> Customers"
+				},
+				{
+					"dataset": {
+						"referenceName": "Ordersmodify",
+						"type": "DatasetReference"
+					},
+					"name": "Orders",
+					"script": "source(output(\n\t\tOrderID as string,\n\t\tCustomerID as string,\n\t\tEmployeeID as string,\n\t\tOrderDate as string,\n\t\tShipperID as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> Orders"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "EnglandCusSorted",
+						"type": "DatasetReference"
+					},
+					"name": "EnglandCusSorted",
+					"script": "FilteronCountry sink(allowSchemaDrift: true,\n\tvalidateSchema: false) ~> EnglandCusSorted"
+				},
+				{
+					"dataset": {
+						"referenceName": "CrossSink",
+						"type": "DatasetReference"
+					},
+					"name": "CrossSink",
+					"script": "Join1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false) ~> CrossSink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "SortonName",
+					"script": "Customers sort(asc(CustomerName, true)) ~> SortonName"
+				},
+				{
+					"name": "OrdersWithoutCusID",
+					"script": "Orders select(mapColumn(\n\t\tOrderID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID\n\t))~> OrdersWithoutCusID"
+				},
+				{
+					"name": "FilteronCountry",
+					"script": "SortonName filter(Country=='England') ~> FilteronCountry"
+				},
+				{
+					"name": "Join1",
+					"script": "SortonName, OrdersWithoutCusID join(endsWith(Country,'France'),\n\tjoinType:'cross',\n\tbroadcast: 'none')~> Join1"
+				}
+			]
+		}
+	}
+}
