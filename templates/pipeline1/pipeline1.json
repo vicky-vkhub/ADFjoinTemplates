@@ -1,0 +1,799 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory Name"
+		},
+		"AzureBlobStorage1": {
+			"type": "string"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/pipeline1')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy Orders",
+						"type": "Copy",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSetting",
+									"recursive": true
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSetting"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSetting"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSetting",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "Orders",
+								"type": "DatasetReference"
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "CopyOrders",
+								"type": "DatasetReference"
+							}
+						]
+					},
+					{
+						"name": "Copy Customers",
+						"type": "Copy",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSetting",
+									"recursive": true
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSetting"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSetting"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSetting",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "Customers",
+								"type": "DatasetReference"
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "CopyCustomers",
+								"type": "DatasetReference"
+							}
+						]
+					},
+					{
+						"name": "Joins",
+						"type": "ExecuteDataFlow",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "Joins",
+								"type": "DataFlowReference"
+							}
+						}
+					},
+					{
+						"name": "SortnFilter",
+						"type": "ExecuteDataFlow",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "SortnFilter",
+								"type": "DataFlowReference"
+							}
+						}
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/Orders')]",
+				"[concat(variables('factoryId'), '/datasets/CopyOrders')]",
+				"[concat(variables('factoryId'), '/datasets/Customers')]",
+				"[concat(variables('factoryId'), '/datasets/CopyCustomers')]",
+				"[concat(variables('factoryId'), '/dataflows/Joins')]",
+				"[concat(variables('factoryId'), '/dataflows/SortnFilter')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Orders')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "Orders.csv",
+						"container": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "OrderID",
+						"type": "String"
+					},
+					{
+						"name": "CustomerID",
+						"type": "String"
+					},
+					{
+						"name": "EmployeeID",
+						"type": "String"
+					},
+					{
+						"name": "OrderDate",
+						"type": "String"
+					},
+					{
+						"name": "ShipperID",
+						"type": "String"
+					}
+				]
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CopyOrders')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "stagging"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Customers')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "Customers.csv",
+						"container": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "CustomerID",
+						"type": "String"
+					},
+					{
+						"name": "CustomerName",
+						"type": "String"
+					},
+					{
+						"name": "ContactName",
+						"type": "String"
+					},
+					{
+						"name": "Address",
+						"type": "String"
+					},
+					{
+						"name": "City",
+						"type": "String"
+					},
+					{
+						"name": "PostalCode",
+						"type": "String"
+					},
+					{
+						"name": "Country",
+						"type": "String"
+					}
+				]
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CopyCustomers')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "stagging"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Joins')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "OrdersStagging",
+								"type": "DatasetReference"
+							},
+							"name": "Orders",
+							"script": "source(output(\n\t\tOrderID as string,\n\t\tCustomerID as string,\n\t\tEmployeeID as string,\n\t\tOrderDate as string,\n\t\tShipperID as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> Orders"
+						},
+						{
+							"dataset": {
+								"referenceName": "CustomersStagging",
+								"type": "DatasetReference"
+							},
+							"name": "Customers",
+							"script": "source(output(\n\t\tCustomerID as string,\n\t\tCustomerName as string,\n\t\tContactName as string,\n\t\tAddress as string,\n\t\tCity as string,\n\t\tPostalCode as string,\n\t\tCountry as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> Customers"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "Fulloutersink",
+								"type": "DatasetReference"
+							},
+							"name": "FullOuterSink",
+							"script": "FulLOuter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tOrderID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID,\n\t\tCustomerID = Customers@CustomerID,\n\t\tCustomerName,\n\t\tContactName,\n\t\tAddress,\n\t\tCity,\n\t\tPostalCode,\n\t\tCountry\n\t)) ~> FullOuterSink"
+						},
+						{
+							"dataset": {
+								"referenceName": "Innersink",
+								"type": "DatasetReference"
+							},
+							"name": "InnerSink",
+							"script": "Inner sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tOrderID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID,\n\t\tCustomerID = Customers@CustomerID,\n\t\tCustomerName,\n\t\tContactName,\n\t\tAddress,\n\t\tCity,\n\t\tPostalCode,\n\t\tCountry\n\t)) ~> InnerSink"
+						},
+						{
+							"dataset": {
+								"referenceName": "LeftOuterSink",
+								"type": "DatasetReference"
+							},
+							"name": "LeftOuterSink",
+							"script": "LeftOuter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tCustomerID = Customers@CustomerID,\n\t\tCustomerName,\n\t\tContactName,\n\t\tAddress,\n\t\tCity,\n\t\tPostalCode,\n\t\tCountry,\n\t\tOrderID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID\n\t)) ~> LeftOuterSink"
+						},
+						{
+							"dataset": {
+								"referenceName": "RightOuterSink",
+								"type": "DatasetReference"
+							},
+							"name": "RightOuterSink",
+							"script": "RightOuter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tCustomerName,\n\t\tContactName,\n\t\tAddress,\n\t\tCity,\n\t\tPostalCode,\n\t\tCountry,\n\t\tOrderID,\n\t\tCustomerID = Orders@CustomerID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID\n\t)) ~> RightOuterSink"
+						}
+					],
+					"transformations": [
+						{
+							"name": "FulLOuter",
+							"script": "Orders, Customers join(Orders@CustomerID == Customers@CustomerID,\n\tjoinType:'outer',\n\tbroadcast: 'none')~> FulLOuter"
+						},
+						{
+							"name": "Inner",
+							"script": "Orders, Customers join(Orders@CustomerID == Customers@CustomerID,\n\tjoinType:'inner',\n\tbroadcast: 'none')~> Inner"
+						},
+						{
+							"name": "LeftOuter",
+							"script": "Customers, Orders join(Customers@CustomerID == Orders@CustomerID,\n\tjoinType:'left',\n\tbroadcast: 'none')~> LeftOuter"
+						},
+						{
+							"name": "RightOuter",
+							"script": "Customers, Orders join(Customers@CustomerID == Orders@CustomerID,\n\tjoinType:'right',\n\tbroadcast: 'none')~> RightOuter"
+						}
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/OrdersStagging')]",
+				"[concat(variables('factoryId'), '/datasets/CustomersStagging')]",
+				"[concat(variables('factoryId'), '/datasets/Fulloutersink')]",
+				"[concat(variables('factoryId'), '/datasets/Innersink')]",
+				"[concat(variables('factoryId'), '/datasets/LeftOuterSink')]",
+				"[concat(variables('factoryId'), '/datasets/RightOuterSink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SortnFilter')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "CustomersSort",
+								"type": "DatasetReference"
+							},
+							"name": "Customers",
+							"script": "source(output(\n\t\tCustomerID as string,\n\t\tCustomerName as string,\n\t\tContactName as string,\n\t\tAddress as string,\n\t\tCity as string,\n\t\tPostalCode as string,\n\t\tCountry as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> Customers"
+						},
+						{
+							"dataset": {
+								"referenceName": "Ordersmodify",
+								"type": "DatasetReference"
+							},
+							"name": "Orders",
+							"script": "source(output(\n\t\tOrderID as string,\n\t\tCustomerID as string,\n\t\tEmployeeID as string,\n\t\tOrderDate as string,\n\t\tShipperID as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> Orders"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "EnglandCusSorted",
+								"type": "DatasetReference"
+							},
+							"name": "EnglandCusSorted",
+							"script": "FilteronCountry sink(allowSchemaDrift: true,\n\tvalidateSchema: false) ~> EnglandCusSorted"
+						},
+						{
+							"dataset": {
+								"referenceName": "CrossSink",
+								"type": "DatasetReference"
+							},
+							"name": "CrossSink",
+							"script": "Join1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false) ~> CrossSink"
+						}
+					],
+					"transformations": [
+						{
+							"name": "SortonName",
+							"script": "Customers sort(asc(CustomerName, true)) ~> SortonName"
+						},
+						{
+							"name": "OrdersWithoutCusID",
+							"script": "Orders select(mapColumn(\n\t\tOrderID,\n\t\tEmployeeID,\n\t\tOrderDate,\n\t\tShipperID\n\t))~> OrdersWithoutCusID"
+						},
+						{
+							"name": "FilteronCountry",
+							"script": "SortonName filter(Country=='England') ~> FilteronCountry"
+						},
+						{
+							"name": "Join1",
+							"script": "SortonName, OrdersWithoutCusID join(endsWith(Country,'France'),\n\tjoinType:'cross',\n\tbroadcast: 'none')~> Join1"
+						}
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/CustomersSort')]",
+				"[concat(variables('factoryId'), '/datasets/Ordersmodify')]",
+				"[concat(variables('factoryId'), '/datasets/EnglandCusSorted')]",
+				"[concat(variables('factoryId'), '/datasets/CrossSink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/OrdersStagging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "Orders.csv",
+						"container": "stagging"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "OrderID",
+						"type": "String"
+					},
+					{
+						"name": "CustomerID",
+						"type": "String"
+					},
+					{
+						"name": "EmployeeID",
+						"type": "String"
+					},
+					{
+						"name": "OrderDate",
+						"type": "String"
+					},
+					{
+						"name": "ShipperID",
+						"type": "String"
+					}
+				]
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CustomersStagging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "Customers.csv",
+						"container": "stagging"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "CustomerID",
+						"type": "String"
+					},
+					{
+						"name": "CustomerName",
+						"type": "String"
+					},
+					{
+						"name": "ContactName",
+						"type": "String"
+					},
+					{
+						"name": "Address",
+						"type": "String"
+					},
+					{
+						"name": "City",
+						"type": "String"
+					},
+					{
+						"name": "PostalCode",
+						"type": "String"
+					},
+					{
+						"name": "Country",
+						"type": "String"
+					}
+				]
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Fulloutersink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "fulloutersink"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Innersink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "innersink"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LeftOuterSink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "leftoutersink"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/RightOuterSink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "rightoutersink"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CustomersSort')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "Customers.csv",
+						"container": "stagging"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "CustomerID",
+						"type": "String"
+					},
+					{
+						"name": "CustomerName",
+						"type": "String"
+					},
+					{
+						"name": "ContactName",
+						"type": "String"
+					},
+					{
+						"name": "Address",
+						"type": "String"
+					},
+					{
+						"name": "City",
+						"type": "String"
+					},
+					{
+						"name": "PostalCode",
+						"type": "String"
+					},
+					{
+						"name": "Country",
+						"type": "String"
+					}
+				]
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Ordersmodify')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "Orders.csv",
+						"container": "stagging"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "OrderID",
+						"type": "String"
+					},
+					{
+						"name": "CustomerID",
+						"type": "String"
+					},
+					{
+						"name": "EmployeeID",
+						"type": "String"
+					},
+					{
+						"name": "OrderDate",
+						"type": "String"
+					},
+					{
+						"name": "ShipperID",
+						"type": "String"
+					}
+				]
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EnglandCusSorted')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "sortnfilter"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CrossSink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage1')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "crosssink"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			}
+		}
+	]
+}
